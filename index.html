@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NorCal Live Music Calendar</title>
-<meta name="description" content="Northern California live music calendar covering the Bay Area, Sacramento, Reno, Lake Tahoe, and the Monterey Bay — search by artist, venue, genre, or city. Powered by Jambase. Updates nightly.">
+<meta name="description" content="Northern California live music calendar covering the Bay Area, Sacramento, Reno, Lake Tahoe, and the Monterey Bay — search by artist, venue, genre, or city. Powered by Jambase. Updated Mon/Wed/Fri.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
@@ -14,13 +14,19 @@
 /* Coastal Fog & International Orange — light "gallery wall" page with
    dark slate cards, a nod to classic music-hall marquees (Fillmore, Warfield) */
 :root {
-  --page-bg:     #F4F6F0;   /* sea mist — outer page background */
-  --ink:         #1E252B;   /* pacific fog — text on the light page */
-  --ink-muted:   #6C7A7F;   /* muted slate-gray — secondary text on light page */
-  --line:        #DCE1D8;   /* soft warm-gray line for inputs/dividers on light bg */
-  --card-bg:     #1E252B;   /* pacific fog — dark card & header background */
-  --card-bg2:    #2C3539;   /* lighter slate — hover / secondary dark surface */
-  --card-border: #3C4750;   /* subtle border inside dark cards */
+  /* Dark-throughout version: the whole page now sits on the same deep
+     navy the cards used to sit on, rather than a light "gallery wall"
+     page with dark cards floating on it. --card-bg (was the darkest
+     tone) now serves as the raised surface for cards/inputs/header —
+     one step lighter than the page so it still reads as elevated —
+     and --card-bg2 is a new step lighter still, for hover states. */
+  --page-bg:     #1E252B;   /* pacific fog — outer page background */
+  --ink:         #F4F6F0;   /* sea mist — text on the dark page */
+  --ink-muted:   #9FB0B5;   /* muted cool gray — secondary text on the dark page */
+  --line:        #3C4750;   /* subtle line for inputs/dividers on dark bg */
+  --card-bg:     #2C3539;   /* raised surface — cards, header, inputs, buttons */
+  --card-bg2:    #3E4A52;   /* lighter still — hover / secondary dark surface */
+  --card-border: #3C4750;   /* subtle border inside dark surfaces */
   --card-text:   #F4F6F0;   /* sea mist — text on dark cards */
   --card-muted:  #9FB0B5;   /* muted cool gray — secondary text on dark cards */
   --accent:      #C0362C;   /* international orange — primary action / featured */
@@ -30,7 +36,7 @@
   --mint:        #94D2BD;   /* eucalyptus green — category tags / light accents */
   --mint-dim:    rgba(148,210,189,.16);
   --radius:      10px;
-  --shadow:      0 4px 14px rgba(30,37,43,.12);
+  --shadow:      0 4px 14px rgba(0,0,0,.35);
 
   /* Genre-family colors — used for genre-tag pills and the event-card's
      left accent line. Reuses accent/teal/mint where they already fit a
@@ -139,7 +145,7 @@ h1 .live { color: var(--mint); }
   display: none;
   align-items: center;
   gap: .5rem;
-  background: #FFFFFF;
+  background: var(--card-bg);
   border: 1px solid var(--line);
   color: var(--ink);
   border-radius: var(--radius);
@@ -170,7 +176,7 @@ h1 .live { color: var(--mint); }
   color: var(--ink-muted);
 }
 input[type="text"], input[type="date"] {
-  background: #FFFFFF;
+  background: var(--card-bg);
   border: 1px solid var(--line);
   color: var(--ink);
   border-radius: var(--radius);
@@ -192,7 +198,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: .6; }
   min-width: 160px;
 }
 .choices__inner {
-  background: #FFFFFF !important;
+  background: var(--card-bg) !important;
   border: 1px solid var(--line) !important;
   border-radius: var(--radius) !important;
   padding: .3rem .5rem !important;
@@ -202,7 +208,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: .6; }
 }
 .choices__list--dropdown,
 .choices__list[aria-expanded] {
-  background: #FFFFFF !important;
+  background: var(--card-bg) !important;
   border: 1px solid var(--teal) !important;
   border-radius: var(--radius) !important;
   z-index: 1000 !important;
@@ -233,7 +239,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: .6; }
   filter: invert(1) brightness(1) !important;
 }
 .choices__input {
-  background: #FFFFFF !important;
+  background: var(--card-bg) !important;
   color: var(--ink) !important;
   font-size: .85rem !important;
 }
@@ -242,7 +248,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: .6; }
 .choices[data-type*="select-multiple"] .choices__inner { cursor: text !important; }
 
 .reset-btn {
-  background: #FFFFFF;
+  background: var(--card-bg);
   border: 1px solid var(--line);
   color: var(--ink-muted);
   border-radius: var(--radius);
@@ -265,7 +271,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: .6; }
   margin-left: auto;
 }
 .view-btn {
-  background: #FFFFFF;
+  background: var(--card-bg);
   border: 1px solid var(--line);
   color: var(--ink-muted);
   border-radius: var(--radius);
@@ -461,7 +467,7 @@ main {
   margin-bottom: .75rem;
 }
 .cal-nav {
-  background: #FFFFFF;
+  background: var(--card-bg);
   border: 1px solid var(--line);
   color: var(--ink);
   border-radius: 6px;
@@ -627,13 +633,13 @@ footer a { color: var(--accent); }
 </main>
 
 <footer>
-  Ad-free &amp; open source · Data from <a href="https://jambase.com" target="_blank">Jambase</a> · Updates nightly · <a href="https://thephdj.co" target="_blank">thephdj.co</a>
+  Ad-free &amp; open source · Data from <a href="https://jambase.com" target="_blank">Jambase</a> · Updated Mon/Wed/Fri · <a href="https://thephdj.co" target="_blank">thephdj.co</a>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
 <script src="events.js"></script>
 <script>
-// events.js is generated nightly by the GitHub Action and won't exist
+// events.js is generated Mon/Wed/Fri by the GitHub Action and won't exist
 // until the first successful run. If it 404s (or hasn't been created
 // yet), fall back to an empty list so the page — including the styled
 // dropdowns — still renders correctly instead of silently breaking.
