@@ -10,7 +10,7 @@ Usage:
     JAMBASE_API_KEY=your_key python scripts/update_events.py
 
 Optional env vars:
-    DAYS_AHEAD    How many days forward to fetch (default: 179)
+    DAYS_AHEAD    How many days forward to fetch (default: 120)
     EVENTS_PATH   Output file path, relative to repo root (default: events.js)
 """
 
@@ -29,8 +29,12 @@ from urllib3.util.retry import Retry
 # ---------------------------------------------------------------------------
 JAMBASE_API_URL = "https://api.data.jambase.com/v3/events"
 STATE_CODES = ["CA", "NV"]
-DAYS_AHEAD = int(os.environ.get("DAYS_AHEAD", 179))
-PER_PAGE = 50
+DAYS_AHEAD = int(os.environ.get("DAYS_AHEAD", 120))
+# 100 is Jambase's max page size. Each page = 1 API call against the
+# free tier's 1,000 calls/month limit, so this directly controls quota
+# usage — do not lower it. (Same lesson learned on the Colorado project:
+# perPage=50 doubled the number of calls needed to fetch the same events.)
+PER_PAGE = 100
 EVENTS_PATH = os.environ.get("EVENTS_PATH", "events.js")
 
 # ---------------------------------------------------------------------------
