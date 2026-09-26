@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NorCal Live Music Calendar</title>
+<meta name="description" content="Northern California live music calendar covering the Bay Area, Sacramento, Reno, Lake Tahoe, and the Monterey Bay — search by artist, venue, genre, or city. Powered by Jambase. Updates nightly.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
+<style>
+/* ── Design tokens ─────────────────────────────────── */
+/* Coastal Fog & International Orange — light "gallery wall" page with
+   dark slate cards, a nod to classic music-hall marquees (Fillmore, Warfield) */
+:root {
+  --page-bg:     #F4F6F0;   /* sea mist — outer page background */
+  --ink:         #1E252B;   /* pacific fog — text on the light page */
+  --ink-muted:   #6C7A7F;   /* muted slate-gray — secondary text on light page */
+  --line:        #DCE1D8;   /* soft warm-gray line for inputs/dividers on light bg */
+  --card-bg:     #1E252B;   /* pacific fog — dark card & header background */
+  --card-bg2:    #2C3539;   /* lighter slate — hover / secondary dark surface */
+  --card-border: #3C4750;   /* subtle border inside dark cards */
+  --card-text:   #F4F6F0;   /* sea mist — text on dark cards */
+  --card-muted:  #9FB0B5;   /* muted cool gray — secondary text on dark cards */
+  --accent:      #C0362C;   /* international orange — primary action / featured */
+  --accent-dim:  rgba(192,54,44,.14);
+  --teal:        #0A9396;   /* ocean teal — secondary accents / tags / regions */
+  --teal-dim:    rgba(10,147,150,.14);
+  --mint:        #94D2BD;   /* eucalyptus green — category tags / light accents */
+  --mint-dim:    rgba(148,210,189,.16);
+  --radius:      10px;
+  --shadow:      0 4px 14px rgba(30,37,43,.12);
+}
+
+/* ── Reset / base ──────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--page-bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 15px;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Header ────────────────────────────────────────── */
+header {
+  background: var(--card-bg);
+  border-bottom: 3px solid var(--accent);
+  padding: 1.25rem 1.5rem;
+}
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+}
+.title-block { display: flex; flex-direction: column; gap: .15rem; }
+h1 {
+  font-family: 'Abril Fatface', serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: .2px;
+  color: var(--accent);
+  line-height: 1.15;
+}
+h1 .live { color: var(--mint); }
+.tagline {
+  font-size: .74rem;
+  color: var(--card-muted);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.stats-bar {
+  width: 100%;
+  font-size: .78rem;
+  color: var(--card-muted);
+  margin-top: .5rem;
+}
+.stats-bar span { color: var(--card-text); font-weight: 700; }
+
+/* ── Active filter chips ───────────────────────────── */
+.active-filters {
+  max-width: 1200px;
+  margin: .6rem auto 0;
+  padding: 0 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  align-items: center;
+  min-height: 0;
+}
+.active-filters:empty { display: none; }
+.chip {
+  background: var(--teal);
+  border: 1px solid var(--teal);
+  color: #FFFFFF;
+  border-radius: 14px;
+  padding: .22rem .7rem;
+  font-size: .73rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform .1s;
+}
+.chip:hover { transform: translateY(1px); }
+.chip .x { font-size: .95rem; line-height: 1; font-weight: 800; }
+
+/* ── Controls ──────────────────────────────────────── */
+.controls-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: .75rem 1.5rem .5rem;
+}
+.controls-toggle {
+  display: none;
+  align-items: center;
+  gap: .5rem;
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: .5rem 1rem;
+  font-size: .85rem;
+  font-family: inherit;
+  cursor: pointer;
+  margin-bottom: .5rem;
+  width: 100%;
+  justify-content: center;
+}
+.controls-toggle .arrow { transition: transform .2s; }
+.controls-toggle.open .arrow { transform: rotate(180deg); }
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  align-items: flex-end;
+}
+.controls.collapsed { display: none; }
+
+.control-group { display: flex; flex-direction: column; gap: .3rem; }
+.control-group label {
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--ink-muted);
+}
+input[type="text"], input[type="date"] {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: .5rem .75rem;
+  font-size: .85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="date"]:focus {
+  border-color: var(--accent);
+}
+input[type="text"]::placeholder { color: var(--ink-muted); }
+input[type="date"]::-webkit-calendar-picker-indicator { opacity: .6; }
+
+/* Choices.js overrides */
+.choices {
+  margin-bottom: 0 !important;
+  min-width: 160px;
+}
+.choices__inner {
+  background: #FFFFFF !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius) !important;
+  padding: .3rem .5rem !important;
+  min-height: 36px !important;
+  font-size: .85rem !important;
+  color: var(--ink) !important;
+}
+.choices__list--dropdown,
+.choices__list[aria-expanded] {
+  background: #FFFFFF !important;
+  border: 1px solid var(--teal) !important;
+  border-radius: var(--radius) !important;
+  z-index: 1000 !important;
+}
+.choices__list--dropdown .choices__item--selectable.is-highlighted,
+.choices__list[aria-expanded] .choices__item--selectable.is-highlighted {
+  background: var(--teal-dim) !important;
+  color: var(--teal) !important;
+}
+.choices__list--multiple .choices__item {
+  background: var(--teal) !important;
+  border: 1px solid var(--teal) !important;
+  color: #FFFFFF !important;
+  border-radius: 3px !important;
+  font-size: .75rem !important;
+  font-weight: 700 !important;
+  margin: 1px !important;
+}
+.choices__list--multiple .choices__item .choices__button {
+  border-left: 1px solid rgba(255,255,255,.4) !important;
+  filter: invert(1) brightness(1) !important;
+}
+.choices__input {
+  background: #FFFFFF !important;
+  color: var(--ink) !important;
+  font-size: .85rem !important;
+}
+.choices__placeholder { color: var(--ink-muted) !important; }
+.choices__list--dropdown .choices__item { color: var(--ink) !important; }
+.choices[data-type*="select-multiple"] .choices__inner { cursor: text !important; }
+
+.reset-btn {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+  border-radius: var(--radius);
+  padding: .5rem 1rem;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+  align-self: flex-end;
+}
+.reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.view-toggle {
+  display: flex;
+  gap: .35rem;
+  align-self: flex-end;
+  margin-left: auto;
+}
+.view-btn {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+  border-radius: var(--radius);
+  padding: .45rem .65rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.view-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+/* ── Main layout ───────────────────────────────────── */
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+}
+.result-count {
+  font-size: .78rem;
+  color: var(--ink-muted);
+  margin: .5rem 0 .75rem;
+}
+
+/* ── List view ─────────────────────────────────────── */
+.date-group { margin-bottom: 1.5rem; }
+.date-heading {
+  font-size: .74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink);
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: .45rem;
+  margin-bottom: .6rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.date-heading .show-count {
+  color: var(--ink-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: .7rem;
+}
+
+.event-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-left: 4px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  margin-bottom: .55rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .5rem 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.event-card:hover { border-color: var(--card-muted); border-left-color: var(--accent); background: var(--card-bg2); }
+.event-card.expanded { border-left-color: var(--accent); border-color: var(--accent); }
+
+.event-left {}
+.event-name {
+  font-weight: 700;
+  font-size: .95rem;
+  margin-bottom: .15rem;
+  color: var(--card-text);
+}
+.event-venue {
+  font-size: .8rem;
+  color: var(--card-muted);
+}
+.event-venue .city { color: var(--mint); font-weight: 600; }
+.event-artists {
+  font-size: .78rem;
+  color: var(--card-muted);
+  margin-top: .1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .4rem;
+}
+.genre-tags { display: flex; flex-wrap: wrap; gap: .25rem; justify-content: flex-end; }
+.genre-tag {
+  font-size: .63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: .16rem .45rem;
+  border-radius: 4px;
+  background: var(--mint-dim);
+  color: var(--mint);
+  border: 1px solid var(--mint);
+}
+.tickets-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #FFFFFF;
+  border-radius: 6px;
+  padding: .3rem .7rem;
+  font-size: .75rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity .15s;
+  white-space: nowrap;
+}
+.tickets-btn:hover { opacity: .85; text-decoration: none; }
+
+/* Expanded detail panel */
+.event-detail {
+  display: none;
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--card-border);
+  margin-top: .5rem;
+  padding-top: .75rem;
+}
+.event-card.expanded .event-detail { display: block; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: .75rem 1.5rem;
+}
+.detail-label {
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--card-muted);
+  margin-bottom: .2rem;
+}
+.detail-value { font-size: .88rem; color: var(--card-text); }
+.detail-actions {
+  margin-top: .75rem;
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  padding: .45rem 1rem;
+  font-size: .82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .85; text-decoration: none; color: #FFFFFF; }
+.btn-secondary {
+  background: none;
+  border: 1px solid var(--card-border);
+  color: var(--card-text);
+  border-radius: 5px;
+  padding: .45rem 1rem;
+  font-size: .82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  transition: border-color .15s;
+}
+.btn-secondary:hover { border-color: var(--teal); text-decoration: none; }
+
+/* ── Calendar view ─────────────────────────────────── */
+#cal-view { display: none; }
+.cal-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .75rem;
+}
+.cal-nav {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 6px;
+  padding: .3rem .75rem;
+  font-family: inherit;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.cal-nav:hover { border-color: var(--accent); }
+.cal-month-label { font-weight: 700; font-size: 1rem; color: var(--ink); }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  font-size: .72rem;
+}
+.cal-dow {
+  text-align: center;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-muted);
+  padding: .3rem 0;
+  font-size: .65rem;
+}
+.cal-day {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  min-height: 72px;
+  padding: .35rem;
+  vertical-align: top;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.cal-day:hover { border-color: var(--card-muted); }
+.cal-day.today { border-color: var(--accent); border-width: 2px; }
+.cal-day.empty { background: transparent; border-color: transparent; cursor: default; }
+.cal-day-num {
+  font-weight: 700;
+  color: var(--card-muted);
+  margin-bottom: .25rem;
+  font-size: .72rem;
+}
+.cal-day.today .cal-day-num { color: var(--accent); }
+.cal-event-pill {
+  background: var(--teal-dim);
+  border: 1px solid var(--teal);
+  color: var(--card-text);
+  border-radius: 3px;
+  padding: .1rem .3rem;
+  margin-bottom: 2px;
+  font-size: .62rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background .15s;
+}
+.cal-event-pill:hover { background: var(--teal); color: #FFFFFF; }
+.cal-more {
+  color: var(--card-muted);
+  font-size: .6rem;
+  margin-top: 2px;
+}
+
+/* ── Empty state ───────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--ink-muted);
+}
+.empty-state h2 { font-size: 1.1rem; margin-bottom: .5rem; color: var(--ink); }
+
+/* ── Footer ────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--ink-muted);
+  font-size: .75rem;
+  border-top: 1px solid var(--line);
+}
+footer a { color: var(--accent); }
+
+/* ── Mobile ────────────────────────────────────────── */
+@media (max-width: 640px) {
+  h1 { font-size: 1.15rem; }
+  .controls-toggle { display: flex; }
+  .controls { flex-direction: column; }
+  .controls.collapsed { display: none; }
+  .control-group { min-width: 100%; }
+  .choices { min-width: 100% !important; }
+  .view-toggle { margin-left: 0; }
+  .event-card { grid-template-columns: 1fr; }
+  .event-right { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .cal-grid { font-size: .6rem; }
+  .cal-day { min-height: 55px; padding: .25rem; }
+  .detail-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="title-block">
+      <h1>NorCal <span class="live">Live Music</span> Calendar</h1>
+      <div class="tagline">Bay Area · Sacramento · Tahoe · Reno · Monterey Bay</div>
+    </div>
+    <div class="stats-bar" id="stats-bar">Loading…</div>
+  </div>
+</header>
+
+<div class="active-filters" id="active-filters"></div>
+
+<div class="controls-wrapper">
+  <button class="controls-toggle" id="controls-toggle" onclick="toggleFilters()">
+    <span>☰ Filters</span>
+    <span class="arrow">▾</span>
+  </button>
+  <div class="controls" id="controls">
+    <div class="control-group" style="flex:1;min-width:180px">
+      <label>Search artist or event</label>
+      <input type="text" id="search" placeholder="e.g. Dead, jazz night…" oninput="applyFilters()">
+    </div>
+    <div class="control-group">
+      <label>Region</label>
+      <select id="region-filter" multiple><option value="">All regions</option></select>
+    </div>
+    <div class="control-group">
+      <label>City</label>
+      <select id="city-filter" multiple><option value="">All cities</option></select>
+    </div>
+    <div class="control-group">
+      <label>Genre</label>
+      <select id="genre-filter" multiple><option value="">All genres</option></select>
+    </div>
+    <div class="control-group">
+      <label>Venue</label>
+      <select id="venue-filter" multiple><option value="">All venues</option></select>
+    </div>
+    <div class="control-group" style="min-width:130px">
+      <label>From</label>
+      <input type="date" id="date-from" onchange="applyFilters()">
+    </div>
+    <div class="control-group" style="min-width:130px">
+      <label>To</label>
+      <input type="date" id="date-to" onchange="applyFilters()">
+    </div>
+    <button class="reset-btn" onclick="resetFilters()">Reset</button>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-list" onclick="setView('list')" title="List view">☰</button>
+      <button class="view-btn" id="btn-cal" onclick="setView('cal')" title="Calendar view">▦</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="result-count" id="result-count"></div>
+  <div id="list-view"></div>
+  <div id="cal-view"></div>
+</main>
+
+<footer>
+  Ad-free &amp; open source · Data from <a href="https://jambase.com" target="_blank">Jambase</a> · Updates nightly · <a href="https://thephdj.co" target="_blank">thephdj.co</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
+<script src="events.js"></script>
+<script>
+// events.js is generated nightly by the GitHub Action and won't exist
+// until the first successful run. If it 404s (or hasn't been created
+// yet), fall back to an empty list so the page — including the styled
+// dropdowns — still renders correctly instead of silently breaking.
+// (Using window.ALL_EVENTS here, not `var`, so this never collides with
+// the `const ALL_EVENTS` that events.js declares when it loads fine.)
+if (typeof ALL_EVENTS === 'undefined') { window.ALL_EVENTS = []; }
+
+// ── State ──────────────────────────────────────────
+let filtered = [];
+let currentView = 'list';
+let expandedId = null;
+let calYear, calMonth;
+let regionChoices, cityChoices, genreChoices, venueChoices;
+
+// Fixed display order (not alphabetical) — Bay Area sub-regions first
+// (city outward), then the outer regions.
+const REGION_ORDER = [
+  'City', 'Peninsula', 'South Bay', 'East Bay', 'North Bay',
+  'Santa Cruz / Monterey Bay', 'Sacramento', 'Tahoe', 'Reno',
+];
+
+// ── Choices.js helpers ─────────────────────────────
+function makeChoices(id, placeholder) {
+  return new Choices('#' + id, {
+    removeItemButton: true,
+    placeholder: true,
+    placeholderValue: placeholder,
+    searchEnabled: true,
+    searchPlaceholderValue: 'Search…',
+    itemSelectText: '',
+    classNames: { containerOuter: 'choices' },
+    shouldSort: true,
+  });
+}
+
+function getChoicesValues(choicesInstance) {
+  return choicesInstance.getValue(true).filter(Boolean);
+}
+
+// ── Init ──────────────────────────────────────────
+function init() {
+  const today = new Date();
+  calYear = today.getFullYear();
+  calMonth = today.getMonth();
+
+  // Populate regions (fixed geographic order, not alphabetical)
+  const regionsPresent = new Set(ALL_EVENTS.map(e => e.region).filter(Boolean));
+  const regions = REGION_ORDER.filter(r => regionsPresent.has(r));
+  const regionEl = document.getElementById('region-filter');
+  regionEl.innerHTML = '';
+  regions.forEach(r => {
+    const o = document.createElement('option'); o.value = r; o.textContent = r; regionEl.appendChild(o);
+  });
+  regionChoices = makeChoices('region-filter', 'All regions');
+
+  // Populate cities
+  const cities = [...new Set(ALL_EVENTS.map(e => e.city).filter(Boolean))].sort();
+  const cityEl = document.getElementById('city-filter');
+  cityEl.innerHTML = '';
+  cities.forEach(c => {
+    const o = document.createElement('option'); o.value = c; o.textContent = c; cityEl.appendChild(o);
+  });
+  cityChoices = makeChoices('city-filter', 'All cities');
+
+  // Populate genres
+  const genreSet = new Set();
+  ALL_EVENTS.forEach(e => (e.genres || '').split(',').map(g => g.trim()).filter(Boolean).forEach(g => genreSet.add(g)));
+  const genres = [...genreSet].sort();
+  const genreEl = document.getElementById('genre-filter');
+  genreEl.innerHTML = '';
+  genres.forEach(g => {
+    const o = document.createElement('option'); o.value = g; o.textContent = toTitleCase(g.replace(/-/g, ' ')); genreEl.appendChild(o);
+  });
+  genreChoices = makeChoices('genre-filter', 'All genres');
+
+  // Populate venues
+  const venues = [...new Set(ALL_EVENTS.map(e => e.venue).filter(Boolean))].sort();
+  const venueEl = document.getElementById('venue-filter');
+  venueEl.innerHTML = '';
+  venues.forEach(v => {
+    const o = document.createElement('option'); o.value = v; o.textContent = v; venueEl.appendChild(o);
+  });
+  venueChoices = makeChoices('venue-filter', 'All venues');
+
+  // Wire up Choices change events
+  document.getElementById('region-filter').addEventListener('change', applyFilters);
+  document.getElementById('city-filter').addEventListener('change', applyFilters);
+  document.getElementById('genre-filter').addEventListener('change', applyFilters);
+  document.getElementById('venue-filter').addEventListener('change', applyFilters);
+
+  // Stats bar
+  const cities2 = new Set(ALL_EVENTS.map(e => e.city).filter(Boolean));
+  const venues2 = new Set(ALL_EVENTS.map(e => e.venue).filter(Boolean));
+  const dates = ALL_EVENTS.map(e => (e.date || '').slice(0, 10)).filter(Boolean).sort();
+  document.getElementById('stats-bar').innerHTML =
+    `<span>${ALL_EVENTS.length.toLocaleString()}</span> shows &middot; ` +
+    `<span>${venues2.size}</span> venues &middot; ` +
+    `<span>${cities2.size}</span> cities &middot; ` +
+    (dates.length ? `<span>${fmtDate(dates[0])}</span> through <span>${fmtDate(dates[dates.length - 1])}</span>` : '');
+
+  applyFilters();
+}
+
+// ── Collapsible filters ────────────────────────────
+function toggleFilters() {
+  const ctrl = document.getElementById('controls');
+  const btn = document.getElementById('controls-toggle');
+  ctrl.classList.toggle('collapsed');
+  btn.classList.toggle('open');
+}
+
+// ── Filters ────────────────────────────────────────
+function applyFilters() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const regions = getChoicesValues(regionChoices);
+  const cities = getChoicesValues(cityChoices);
+  const genres = getChoicesValues(genreChoices);
+  const venues = getChoicesValues(venueChoices);
+  const from = document.getElementById('date-from').value;
+  const to = document.getElementById('date-to').value;
+
+  filtered = ALL_EVENTS.filter(e => {
+    const d = (e.date || '').slice(0, 10);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (regions.length && !regions.includes(e.region)) return false;
+    if (cities.length && !cities.includes(e.city)) return false;
+    if (venues.length && !venues.includes(e.venue)) return false;
+    if (genres.length) {
+      const evGenres = (e.genres || '').split(',').map(g => g.trim()).filter(Boolean);
+      if (!genres.some(g => evGenres.includes(g))) return false;
+    }
+    if (q) {
+      const blob = (e.name + ' ' + e.headliner + ' ' + e.artists + ' ' + e.venue + ' ' + e.city).toLowerCase();
+      if (!blob.includes(q)) return false;
+    }
+    return true;
+  });
+
+  updateActiveChips({ regions, cities, genres, venues, q, from, to });
+  renderResultCount();
+  if (currentView === 'list') renderList();
+  else renderCal();
+}
+
+function updateActiveChips({ regions, cities, genres, venues, q, from, to }) {
+  const container = document.getElementById('active-filters');
+  container.innerHTML = '';
+
+  const addChip = (label, onRemove) => {
+    const ch = document.createElement('div');
+    ch.className = 'chip';
+    ch.innerHTML = `${label} <span class="x">×</span>`;
+    ch.onclick = onRemove;
+    container.appendChild(ch);
+  };
+
+  regions.forEach(r => addChip(r, () => { regionChoices.removeActiveItemsByValue(r); applyFilters(); }));
+  cities.forEach(c => addChip(c, () => { cityChoices.removeActiveItemsByValue(c); applyFilters(); }));
+  genres.forEach(g => addChip(toTitleCase(g.replace(/-/g, ' ')), () => { genreChoices.removeActiveItemsByValue(g); applyFilters(); }));
+  venues.forEach(v => addChip(v, () => { venueChoices.removeActiveItemsByValue(v); applyFilters(); }));
+  if (q) addChip(`"${q}"`, () => { document.getElementById('search').value = ''; applyFilters(); });
+  if (from) addChip(`From ${fmtDate(from)}`, () => { document.getElementById('date-from').value = ''; applyFilters(); });
+  if (to)   addChip(`To ${fmtDate(to)}`,   () => { document.getElementById('date-to').value = '';   applyFilters(); });
+}
+
+function resetFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value = '';
+  regionChoices.removeActiveItems();
+  cityChoices.removeActiveItems();
+  genreChoices.removeActiveItems();
+  venueChoices.removeActiveItems();
+  applyFilters();
+}
+
+// ── Render helpers ─────────────────────────────────
+function renderResultCount() {
+  document.getElementById('result-count').textContent =
+    `Showing ${filtered.length.toLocaleString()} of ${ALL_EVENTS.length.toLocaleString()} events`;
+}
+
+function renderList() {
+  const container = document.getElementById('list-view');
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><h2>No events match your filters</h2><p>Try broadening your search or resetting the filters.</p></div>';
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  filtered.forEach(e => {
+    const d = (e.date || '').slice(0, 10);
+    (groups[d] = groups[d] || []).push(e);
+  });
+
+  container.innerHTML = Object.keys(groups).sort().map(d => `
+    <div class="date-group">
+      <div class="date-heading">
+        ${fmtDateLong(d)}
+        <span class="show-count">${groups[d].length} show${groups[d].length > 1 ? 's' : ''}</span>
+      </div>
+      ${groups[d].map(e => renderCard(e)).join('')}
+    </div>
+  `).join('');
+}
+
+function renderCard(e) {
+  const genres = (e.genres || '').split(',').map(g => g.trim()).filter(Boolean);
+  const genreTags = genres.slice(0, 3).map(g =>
+    `<span class="genre-tag">${toTitleCase(g.replace(/-/g, ' '))}</span>`
+  ).join('');
+
+  const isExpanded = expandedId === e.id;
+
+  return `
+    <div class="event-card${isExpanded ? ' expanded' : ''}" id="card-${e.id}" onclick="toggleCard('${e.id}')">
+      <div class="event-left">
+        <div class="event-name">${esc(e.name)}</div>
+        <div class="event-venue">${esc(e.venue)} · <span class="city">${esc(e.city)}</span></div>
+        ${e.artists ? `<div class="event-artists">${esc(e.artists)}</div>` : ''}
+      </div>
+      <div class="event-right">
+        ${genreTags ? `<div class="genre-tags">${genreTags}</div>` : ''}
+        ${e.tickets ? `<a class="tickets-btn" href="${esc(e.tickets)}" target="_blank" onclick="event.stopPropagation()">Tickets ↗</a>` : ''}
+      </div>
+      <div class="event-detail">
+        <div class="detail-grid">
+          <div>
+            <div class="detail-label">Venue</div>
+            <div class="detail-value">${esc(e.venue)}</div>
+          </div>
+          <div>
+            <div class="detail-label">City</div>
+            <div class="detail-value">${esc(e.city)}</div>
+          </div>
+          <div>
+            <div class="detail-label">Date</div>
+            <div class="detail-value">${fmtDateLong((e.date || '').slice(0, 10))}</div>
+          </div>
+          ${e.artists ? `<div style="grid-column:1/-1">
+            <div class="detail-label">Artists on the bill</div>
+            <div class="detail-value">${esc(e.artists)}</div>
+          </div>` : ''}
+        </div>
+        <div class="detail-actions">
+          ${e.tickets ? `<a class="btn-primary" href="${esc(e.tickets)}" target="_blank" onclick="event.stopPropagation()">Get Tickets ↗</a>` : ''}
+          ${e.url ? `<a class="btn-secondary" href="${esc(e.url)}" target="_blank" onclick="event.stopPropagation()">Jambase Details</a>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleCard(id) {
+  expandedId = expandedId === id ? null : id;
+  renderList();
+}
+
+// ── Calendar ───────────────────────────────────────
+function renderCal() {
+  const container = document.getElementById('cal-view');
+  const y = calYear, m = calMonth;
+  const monthName = new Date(y, m, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  // Index events by date
+  const byDate = {};
+  filtered.forEach(e => {
+    const d = (e.date || '').slice(0, 10);
+    (byDate[d] = byDate[d] || []).push(e);
+  });
+
+  let cells = '';
+  for (let i = 0; i < firstDay; i++) cells += '<div class="cal-day empty"></div>';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const evs = byDate[dStr] || [];
+    const isToday = dStr === todayStr;
+    const MAX_PILLS = 3;
+    const pills = evs.slice(0, MAX_PILLS).map(e =>
+      `<div class="cal-event-pill" onclick="event.stopPropagation();jumpToEvent('${e.id}')" title="${esc(e.name)}">${esc(e.headliner || e.name)}</div>`
+    ).join('');
+    const more = evs.length > MAX_PILLS ? `<div class="cal-more">+${evs.length - MAX_PILLS} more</div>` : '';
+    cells += `<div class="cal-day${isToday ? ' today' : ''}" onclick="jumpToDate('${dStr}')">
+      <div class="cal-day-num">${day}</div>${pills}${more}
+    </div>`;
+  }
+
+  const dows = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  container.innerHTML = `
+    <div class="cal-header">
+      <button class="cal-nav" onclick="shiftMonth(-1)">◀</button>
+      <span class="cal-month-label">${monthName}</span>
+      <button class="cal-nav" onclick="shiftMonth(1)">▶</button>
+    </div>
+    <div class="cal-grid">${dows}${cells}</div>
+  `;
+}
+
+function shiftMonth(delta) {
+  calMonth += delta;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCal();
+}
+
+function jumpToDate(d) {
+  setView('list');
+  document.getElementById('date-from').value = d;
+  document.getElementById('date-to').value = d;
+  applyFilters();
+}
+
+function jumpToEvent(id) {
+  setView('list');
+  expandedId = id;
+  renderList();
+  setTimeout(() => {
+    const el = document.getElementById('card-' + id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
+}
+
+// ── View toggle ────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  // Explicit 'block' (not '') — #cal-view has `display: none` by default in
+  // the stylesheet, and an empty inline style just falls back to that CSS
+  // rule instead of overriding it, which silently kept the calendar hidden.
+  document.getElementById('list-view').style.display = v === 'list' ? 'block' : 'none';
+  document.getElementById('cal-view').style.display  = v === 'cal'  ? 'block' : 'none';
+  document.getElementById('btn-list').classList.toggle('active', v === 'list');
+  document.getElementById('btn-cal').classList.toggle('active', v === 'cal');
+  if (v === 'cal') renderCal();
+  else renderList();
+}
+
+// ── Utils ──────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toTitleCase(s) {
+  return s.replace(/\b\w/g, c => c.toUpperCase());
+}
+function fmtDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return new Date(+y, +m - 1, +day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtDateLong(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return new Date(+y, +m - 1, +day).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+// ── Boot ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
