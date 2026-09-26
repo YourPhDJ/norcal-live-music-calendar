@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,6 +31,20 @@
   --mint-dim:    rgba(148,210,189,.16);
   --radius:      10px;
   --shadow:      0 4px 14px rgba(30,37,43,.12);
+
+  /* Genre-family colors — used for genre-tag pills and the event-card's
+     left accent line. Reuses accent/teal/mint where they already fit a
+     family, adds four more so genres read as distinct at a glance. */
+  --genre-amber:      #C98A2B;   /* hip-hop / r&b / soul / funk / gospel */
+  --genre-amber-dim:  rgba(201,138,43,.16);
+  --genre-rust:       #A85C32;   /* country / folk / americana / bluegrass */
+  --genre-rust-dim:   rgba(168,92,50,.16);
+  --genre-rose:       #C2577A;   /* latin / reggae / world */
+  --genre-rose-dim:   rgba(194,87,122,.16);
+  --genre-steel:      #4A7AA8;   /* classical / opera */
+  --genre-steel-dim:  rgba(74,122,168,.16);
+  --genre-other:      #9FB0B5;   /* pop / everything else */
+  --genre-other-dim:  rgba(159,176,181,.18);
 }
 
 /* ── Reset / base ──────────────────────────────────── */
@@ -191,6 +206,13 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: .6; }
   border: 1px solid var(--teal) !important;
   border-radius: var(--radius) !important;
   z-index: 1000 !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: 260px !important;
+}
+.choices__list--dropdown .choices__item,
+.choices__list[aria-expanded] .choices__item {
+  white-space: nowrap !important;
 }
 .choices__list--dropdown .choices__item--selectable.is-highlighted,
 .choices__list[aria-expanded] .choices__item--selectable.is-highlighted {
@@ -292,7 +314,7 @@ main {
 .event-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-left: 4px solid var(--card-border);
+  border-left: 4px solid var(--card-genre-color, var(--card-border));
   border-radius: var(--radius);
   padding: .75rem 1rem;
   margin-bottom: .55rem;
@@ -341,9 +363,11 @@ main {
   letter-spacing: .05em;
   padding: .16rem .45rem;
   border-radius: 4px;
-  background: var(--mint-dim);
-  color: var(--mint);
-  border: 1px solid var(--mint);
+  /* Fallback if a color ever isn't set inline; JS sets the real
+     per-genre-family color/background/border on each tag. */
+  background: var(--genre-other-dim);
+  color: var(--genre-other);
+  border: 1px solid var(--genre-other);
 }
 .tickets-btn {
   display: inline-flex;
@@ -820,18 +844,20 @@ function renderList() {
 
 function renderCard(e) {
   const genres = (e.genres || '').split(',').map(g => g.trim()).filter(Boolean);
-  const genreTags = genres.slice(0, 3).map(g =>
-    `<span class="genre-tag">${toTitleCase(g.replace(/-/g, ' '))}</span>`
-  ).join('');
+  const primaryColor = GENRE_COLORS[genres.length ? genreFamily(genres[0]) : 'other'].fg;
+  const genreTags = genres.slice(0, 3).map(g => {
+    const c = GENRE_COLORS[genreFamily(g)];
+    return `<span class="genre-tag" style="background:${c.bg};color:${c.fg};border-color:${c.fg}">${toTitleCase(g.replace(/-/g, ' '))}</span>`;
+  }).join('');
 
   const isExpanded = expandedId === e.id;
 
   return `
-    <div class="event-card${isExpanded ? ' expanded' : ''}" id="card-${e.id}" onclick="toggleCard('${e.id}')">
+    <div class="event-card${isExpanded ? ' expanded' : ''}" id="card-${e.id}" style="--card-genre-color:${primaryColor}" onclick="toggleCard('${e.id}')">
       <div class="event-left">
         <div class="event-name">${esc(e.name)}</div>
         <div class="event-venue">${esc(e.venue)} · <span class="city">${esc(e.city)}</span></div>
-        ${e.artists ? `<div class="event-artists">${esc(e.artists)}</div>` : ''}
+        ${e.artists ? `<div class="event-artists">${esc(formatArtists(e.artists))}</div>` : ''}
       </div>
       <div class="event-right">
         ${genreTags ? `<div class="genre-tags">${genreTags}</div>` : ''}
@@ -955,6 +981,46 @@ function setView(v) {
 // ── Utils ──────────────────────────────────────────
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Cap the artist-bill teaser to a handful of names so it never runs off
+// the edge of the card; the full list still shows in the expanded detail.
+function formatArtists(str, max = 4) {
+  const names = (str || '').split('|').map(s => s.trim()).filter(Boolean);
+  if (names.length <= max) return names.join(' · ');
+  return names.slice(0, max).join(' · ') + ` +${names.length - max} more`;
+}
+
+// Group raw Jambase genre slugs into a handful of families so tags and
+// the card's accent line read as distinct colors at a glance, rather
+// than every one of the dozens of raw genre slugs needing its own color.
+const GENRE_FAMILIES = [
+  ['classical',  ['classical', 'opera', 'orchestra', 'symphony']],
+  ['jazz',       ['jazz', 'blues']],
+  ['hiphop',     ['hip-hop', 'hiphop', 'rap', 'r-b', 'rnb', 'soul', 'funk', 'gospel']],
+  ['latin',      ['latin', 'reggae', 'reggaeton', 'salsa', 'world', 'afrobeat', 'ska', 'cumbia', 'caribbean']],
+  ['country',    ['country', 'folk', 'americana', 'bluegrass', 'singer-songwriter', 'acoustic']],
+  ['electronic', ['electronic', 'dance', 'house', 'techno', 'edm', 'dubstep', 'trance', 'dj', 'disco']],
+  ['rock',       ['rock', 'punk', 'metal', 'grunge', 'alternative', 'indie', 'emo', 'hardcore', 'shoegaze', 'goth']],
+];
+
+const GENRE_COLORS = {
+  classical:  { fg: 'var(--genre-steel)', bg: 'var(--genre-steel-dim)' },
+  jazz:       { fg: 'var(--mint)',        bg: 'var(--mint-dim)' },
+  hiphop:     { fg: 'var(--genre-amber)', bg: 'var(--genre-amber-dim)' },
+  latin:      { fg: 'var(--genre-rose)',  bg: 'var(--genre-rose-dim)' },
+  country:    { fg: 'var(--genre-rust)',  bg: 'var(--genre-rust-dim)' },
+  electronic: { fg: 'var(--teal)',        bg: 'var(--teal-dim)' },
+  rock:       { fg: 'var(--accent)',      bg: 'var(--accent-dim)' },
+  other:      { fg: 'var(--genre-other)', bg: 'var(--genre-other-dim)' },
+};
+
+function genreFamily(slug) {
+  const g = (slug || '').toLowerCase();
+  for (const [family, keywords] of GENRE_FAMILIES) {
+    if (keywords.some(k => g.includes(k))) return family;
+  }
+  return 'other';
 }
 function toTitleCase(s) {
   return s.replace(/\b\w/g, c => c.toUpperCase());
